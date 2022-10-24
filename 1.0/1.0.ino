@@ -36,7 +36,7 @@
 #define NOTE_B3 247
 
 
-//MICROSERVOMOTOR
+//::::::::::::::::::MicroServomotor:::::::::::::::::
 #define PIN_MICROSERVOMOTOR 10
 #define ANCHO_PULSO_MIN_MICROSERVOMOTOR 500
 #define ANCHO_PULSO_MAX_MICROSERVOMOTOR 2500
@@ -44,16 +44,14 @@
 #define PUERTA_CERRADA 90
 Servo microservomotor;
 
+//:::::::::::::::::Constantes:::::::::::::::
+#define PUERTA_BLUETOOTH -1
+#define PAUSA_BLUETOOTH -2
+#define CANCELAR_BLUETOOTH -3
+
 //:::::::::::::::sensores::::::::::::::::::::::::::::
 #define PIN_BOTON 12
 #define PIN_POTENCIOMETRO A3
-
-//:::::::::::::::CONSTANTES::::::::::::::::::::::::::
-#define UMBRAL_TIMEOUT 60
-
-#define ENTRADA_PAUSA_P P
-#define ENTRADA_START_S S
-#define MULTIPLICADOR_SEÑAL_A_TIEMPO 60/1024
 
 //:::::::::::::::VARIABLES:::::::::::::::::::::::::::
 // VARIABLE GLOBAL DE ESTADO DEL SISTEMA EMBEBIDO
@@ -63,6 +61,7 @@ int tiempo = 0;
 int tiempo_restante;
 int tipo_evento = PUERTA_CERRADA;
 int tipo_evento_temp;
+int valor_temp = LOW;
 int estado_puerta;
 char lecturaConsola;
 int timerCalentando;
@@ -107,8 +106,7 @@ int verificarConsola()
         return 0;
       }
 
-      // Si el numero es 18, es la accion para abrir la puerta. Esto tambien verlo con los profes
-      if (action == 18)
+      if (action == PUERTA_BLUETOOTH)
       {
         cambiarEstadoPuerta();
       } else {
@@ -140,13 +138,15 @@ void iniciarTiempo(int t)
 bool verificarBoton()
 {
     int valor_actual = digitalRead(PIN_BOTON);
+    int res = false;
 
-    if (valor_actual == HIGH)
+    if (valor_actual == HIGH && valor_temp == LOW)
     {
-        return true;
+        res = true;
     }
+    valor_temp = valor_actual;
 
-    return false;
+    return res;
 }
 
 // Si la puerta esta abierta la cierra y viceversa.
@@ -200,17 +200,15 @@ void generarEvento()
     }
 
     // Setea la temperatura
-    //if(verificarPotenciometro())
-    //{
     temperaturaTemp = analogRead(PIN_POTENCIOMETRO);
-    if(temperatura == 0 || temperatura - 5 > temperaturaTemp || temperatura + 5 < temperaturaTemp)
+    // Consultar porque creo anda mal el potenciometro.
+    if(temperatura == 0 || temperatura - 150 > temperaturaTemp || temperatura + 150 < temperaturaTemp)
     {
       temperatura = temperaturaTemp;
       Serial.print("\nLa temperatura es: ");
       Serial.print(temperatura);
       BT.println(temperatura);
     }
-    //}
 
     // Comparo si hubo un cambio de evento
     if(tipo_evento_temp != tipo_evento)
@@ -294,15 +292,19 @@ void maquinaDeEstados()
                     {
                       int action = BT.parseInt();
 
-                      // Si el numero es 18, es la accion para abrir la puerta. Esto tambien verlo con los profes
-                      if (action == 18)
+                      switch(action)
                       {
-                        cambiarEstadoPuerta();
-                      }
-
-                      if (action == 8)
-                      {
-                        tipo_evento_temp = TIPO_EVENTO_PRESIONA_PAUSA;
+                        case PUERTA_BLUETOOTH:
+                          cambiarEstadoPuerta();
+                          break;
+                        case PAUSA_BLUETOOTH:
+                          tipo_evento_temp = TIPO_EVENTO_PRESIONA_PAUSA;
+                          break;
+                        case CANCELAR_BLUETOOTH:
+                          tipo_evento_temp = TIPO_EVENTO_CANCELAR;
+                          break;
+                        default:
+                          break;
                       }
                     }
 
@@ -361,15 +363,19 @@ void maquinaDeEstados()
                     {
                       int action = BT.parseInt();
 
-                      // Si el numero es 18, es la accion para abrir la puerta. Esto tambien verlo con los profes
-                      if (action == 18)
+                      switch(action)
                       {
-                        cambiarEstadoPuerta();
-                      }
-
-                      if (action == 8)
-                      {
-                        tipo_evento_temp = TIPO_EVENTO_PRESIONA_REANUDAR;
+                        case PUERTA_BLUETOOTH:
+                          cambiarEstadoPuerta();
+                          break;
+                        case PAUSA_BLUETOOTH:
+                          tipo_evento_temp = TIPO_EVENTO_PRESIONA_REANUDAR;
+                          break;
+                        case CANCELAR_BLUETOOTH:
+                          tipo_evento_temp = TIPO_EVENTO_CANCELAR;
+                          break;
+                        default:
+                          break;
                       }
                     }
 
@@ -387,6 +393,14 @@ void maquinaDeEstados()
                 estado = ESTADO_CALENTANDO;
                 tipo_evento_temp = TIPO_EVENTO_CONTINUE;
               break;
+              case TIPO_EVENTO_CANCELAR:
+                if(estado_puerta == PUERTA_ABIERTA)
+                {
+                  cambiarEstadoPuerta();
+                }
+                estado = ESTADO_CALENTANDO;
+                tipo_evento_temp = TIPO_EVENTO_TIMEOUT;
+                break;
               default:
               {
                   evento.tipo = TIPO_EVENTO_DESCONOCIDO;
