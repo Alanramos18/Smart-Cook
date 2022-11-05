@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SmartCook</string>
+    <string name="text_list_devices">Lista de dispositivos</string>
+    <string name="text_pair">Conectar</string>
+</resources>
