@@ -1,7 +1,5 @@
 package com.example.smartcook;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
@@ -37,6 +35,7 @@ public class DeviceListActivity extends Activity {
         mAdapter.setData(mDeviceList);
 
         mAdapter.setListener(listenerBotonEmparejar);
+        mAdapter.setSelectListener(listenerSelector);
         mListView.setAdapter(mAdapter);
 
         IntentFilter filter = new IntentFilter();
@@ -98,6 +97,17 @@ public class DeviceListActivity extends Activity {
         }
     };
 
+    private DeviceListAdapter.OnSelectorClickListener listenerSelector = new DeviceListAdapter.OnSelectorClickListener() {
+        @SuppressLint("MissingPermission")
+        @Override
+        public void onSelectorClick(String address) {
+            Intent i = new Intent(DeviceListActivity.this, MainActivity.class);
+            i.putExtra("Direccion_Bluetooth", address);
+
+            startActivity(i);
+        }
+    };
+
     private final BroadcastReceiver mPairReceiver = new BroadcastReceiver() {
         @SuppressLint("MissingPermission")
         public void onReceive(Context context, Intent intent) {
@@ -111,7 +121,6 @@ public class DeviceListActivity extends Activity {
 
                 if (state == BluetoothDevice.BOND_BONDED && prevState == BluetoothDevice.BOND_BONDING)
                 {
-                    //showToast("Emparejado");
                     BluetoothDevice dispositivo = (BluetoothDevice) mAdapter.getItem(posicionListBluetooth);
 
                     showToast(dispositivo.getName());

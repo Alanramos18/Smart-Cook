@@ -11,6 +11,10 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -25,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class TimeActivity extends AppCompatActivity {
 
     private TextView temperatureText;
+    private TextView pauseText;
     private TextView timerView;
     private Button firstBtn;
     private Button secondBtn;
@@ -34,6 +39,8 @@ public class TimeActivity extends AppCompatActivity {
     private BluetoothSocket btSocket;
     private BluetoothDevice device;
     private boolean firstTime = true;
+    final int handlerState = 0;
+    private StringBuilder recDataString = new StringBuilder();
 
 
     private CountDownTimer timer;
@@ -54,6 +61,7 @@ public class TimeActivity extends AppCompatActivity {
 
         temperatureText = findViewById(R.id.temperatureText);
         timerView = findViewById(R.id.timer);
+        pauseText = findViewById(R.id.pauseText);
         firstBtn = findViewById(R.id.firstBtn);
         secondBtn = findViewById(R.id.secondBtn);
         timeBtn = findViewById(R.id.timeBtn);
@@ -64,6 +72,7 @@ public class TimeActivity extends AppCompatActivity {
         timeBtn.setText("Elegir tiempo");
 
         timerView.setVisibility(View.INVISIBLE);
+        pauseText.setVisibility(View.INVISIBLE);
 
         firstBtn.setOnClickListener(firstBtnListener);
         secondBtn.setOnClickListener(secondBtnListener);
@@ -101,6 +110,7 @@ public class TimeActivity extends AppCompatActivity {
             {
                 try {
                     pauseTimer();
+                    pauseText.setVisibility(View.VISIBLE);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -116,7 +126,6 @@ public class TimeActivity extends AppCompatActivity {
                 try {
                     if(firstTime)
                     {
-                        showToast("Entro aca");
                         mConnectedThread.write(Integer.toString(seconds));
 
                         timeLeft = TimeUnit.SECONDS.toMillis(seconds);
@@ -126,6 +135,7 @@ public class TimeActivity extends AppCompatActivity {
                     else
                     {
                         mConnectedThread.write(PAUSE_ACTION);
+                        pauseText.setVisibility(View.INVISIBLE);
                     }
 
                     StartTimer();
@@ -256,6 +266,7 @@ public class TimeActivity extends AppCompatActivity {
                 mConnectedThread = new ConnectedThread(btSocket);
                 mConnectedThread.start();
                 mConnectedThread.write(BLUETOOTH_CHECK);
+                mConnectedThread.setBluetoothIn(HandlerMsgHiloPrincipal(), handlerState);
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (Exception e)
@@ -263,5 +274,35 @@ public class TimeActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
+    }
+
+    private Handler HandlerMsgHiloPrincipal()
+    {
+        return new Handler(Looper.getMainLooper()) {
+            public void handleMessage(Message msg)
+            {
+                if(msg.what == handlerState)
+                {
+                    String readMessage = (String) msg.obj;
+                    recDataString.append(readMessage);
+                    int endOfLineIndex = recDataString.indexOf("\r\n");
+
+                    if(endOfLineIndex > 0)
+                    {
+                        String temperature = recDataString.substring(0, endOfLineIndex);
+                        setTemperature(temperature);
+
+                        recDataString.delete(0, recDataString.length());
+                    }
+                }
+            }
+        };
+    }
+
+    private void setTemperature(String temp)
+    {
+        int temperature = Integer.parseInt(temp) / 10;
+
+        temperatureText.setText(Integer.toString(temperature) + "\u2103");
     }
 }

@@ -3,6 +3,7 @@ package com.example.smartcook;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +18,7 @@ public class DeviceListAdapter extends BaseAdapter {
     private LayoutInflater mInflater;
     private List<BluetoothDevice> mData;
     private OnPairButtonClickListener mListener;
+    private OnSelectorClickListener mSelector;
 
     public DeviceListAdapter(Context context) {
         mInflater = LayoutInflater.from(context);
@@ -29,6 +31,8 @@ public class DeviceListAdapter extends BaseAdapter {
     public void setListener(OnPairButtonClickListener listener) {
         mListener = listener;
     }
+
+    public void setSelectListener(OnSelectorClickListener listener) { mSelector = listener; }
 
     public int getCount() {
         return (mData == null) ? 0 : mData.size();
@@ -63,6 +67,15 @@ public class DeviceListAdapter extends BaseAdapter {
         BluetoothDevice device	= mData.get(position);
 
         holder.nameTv.setText(device.getName());
+        holder.nameTv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(mSelector != null && holder.pairBtn.getText().equals("Unpair"))
+                {
+                    mSelector.onSelectorClick(device.getAddress());
+                }
+            }
+        });
         holder.addressTv.setText(device.getAddress());
         holder.pairBtn.setText((device.getBondState() == BluetoothDevice.BOND_BONDED) ? "Unpair" : "Pair");
         holder.pairBtn.setOnClickListener(new View.OnClickListener() {
@@ -87,5 +100,8 @@ public class DeviceListAdapter extends BaseAdapter {
         public abstract void onPairButtonClick(int position);
     }
 
+    public interface OnSelectorClickListener {
+        public abstract void onSelectorClick(String address);
+    }
 
 }

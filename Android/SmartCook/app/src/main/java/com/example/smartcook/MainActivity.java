@@ -183,7 +183,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             {
                 BluetoothDevice device = (BluetoothDevice) intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
-                if(!mDeviceList.contains(device))
+                if((device.getName() != null || !device.getName().isEmpty()) && !mDeviceList.contains(device))
                 {
                     mDeviceList.add(device);
 
