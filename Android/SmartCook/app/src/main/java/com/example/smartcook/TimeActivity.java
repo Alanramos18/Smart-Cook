@@ -36,6 +36,8 @@ public class TimeActivity extends AppCompatActivity {
     private Button firstBtn;
     private Button secondBtn;
     private Button timeBtn;
+    private CountDownTimer timer;
+    private int minutes, seconds;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,10 +77,36 @@ public class TimeActivity extends AppCompatActivity {
         }
     }
 
+    @SuppressLint("MissingPermission")
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        presenter.CheckBTConnection();
+    }
+
+    public void popTimePicker(View view) {
+        TimePickerDialog.OnTimeSetListener onTimeSetListener = new TimePickerDialog.OnTimeSetListener() {
+            @Override
+            public void onTimeSet(TimePicker timePicker, int selectedMinutes, int selectedSeconds) {
+                minutes = selectedMinutes;
+                seconds = selectedSeconds;
+                timeBtn.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
+            }
+        };
+
+        int style = AlertDialog.THEME_HOLO_DARK;
+
+        TimePickerDialog timePickerDialog = new TimePickerDialog(this, style, onTimeSetListener, minutes, seconds, true);
+
+        timePickerDialog.setTitle("Seleccione el tiempo de cocción");
+        timePickerDialog.show();
+    }
+
     // Setters
     public void setTemperatureText(String text)
     {
-        temperatureText.setText("0");
+        temperatureText.setText(text);
     }
 
     public void setFirstBtn(String text)
@@ -94,11 +122,6 @@ public class TimeActivity extends AppCompatActivity {
     }
 
     public void setTimeBtn(String text)
-    {
-        timeBtn.setText(text);
-    }
-
-    public void setTimerView(String text)
     {
         timeBtn.setText(text);
     }
@@ -126,5 +149,55 @@ public class TimeActivity extends AppCompatActivity {
     public void setSecondBtnListener(View.OnClickListener listener)
     {
         secondBtn.setOnClickListener(listener);
+    }
+
+    public void cancelTimer()
+    {
+        timer.cancel();
+    }
+
+    public void StartTimer() {
+        timer = new CountDownTimer(presenter.getTimeLeft(), 1000)
+        {
+            @Override
+            public void onTick(long millisUntilFinished)
+            {
+                presenter.setTimeLeft(millisUntilFinished);
+                updateCountDownText();
+            }
+
+            @Override
+            public void onFinish()
+            {
+                presenter.setTimeRunning(false);
+                presenter.setFirstTime(true);
+                timerView.setVisibility(View.INVISIBLE);
+                timeBtn.setVisibility(View.VISIBLE);
+                timeBtn.setText("Elegir tiempo");
+                firstBtn.setText("Iniciar");
+                secondBtn.setText("Volver");
+                showToast("Finalizado!");
+            }
+        }.start();
+    }
+
+    private void updateCountDownText()
+    {
+        long timeLeft = presenter.getTimeLeft();
+        int minutes = (int) (timeLeft / 1000) / 60;
+        int seconds = (int) (timeLeft / 1000) % 60;
+
+        String timeLeftFormatted = String.format("%02d:%02d", minutes, seconds);
+        timerView.setText(timeLeftFormatted);
+    }
+
+    public int getMinutes()
+    {
+        return minutes;
+    }
+
+    public int getSeconds()
+    {
+        return seconds;
     }
 }

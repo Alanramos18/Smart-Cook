@@ -66,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
 
         if(deviceAddress != null && !deviceAddress.isEmpty())
         {
+            deviceConnected = true;
+
             presenter.startBTConnection(deviceAddress);
         }
     }
@@ -84,8 +86,6 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
 
         presenter.CheckBTAdapter();
-
-        presenter.StopSensors();
 
         presenter.CheckBTConnection();
     }

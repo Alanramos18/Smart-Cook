@@ -161,7 +161,7 @@ public class MainPresenter implements IMainPresenter, SensorEventListener {
         if(deviceConnected)
         {
             try {
-                blueTooth.getBluetoothSocket().close();
+                blueTooth.closeSocket();
             }
             catch (IOException e2) {
                 e2.printStackTrace();
@@ -310,7 +310,7 @@ public class MainPresenter implements IMainPresenter, SensorEventListener {
             {
                 BluetoothDevice device = (BluetoothDevice) intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
-                if((device.getName() != null || !device.getName().isEmpty()) && !mDeviceList.contains(device))
+                if(device != null && (device.getName() != null && !device.getName().isEmpty()) && !mDeviceList.contains(device))
                 {
                     mDeviceList.add(device);
 

@@ -9,6 +9,7 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
 import android.view.View;
 import android.widget.TimePicker;
 
@@ -19,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 public class TimePresenter implements ITimePresenter{
 
     private TimeActivity timeView;
-    private CountDownTimer timer;
 
     private BlueTooth blueTooth;
     private ConnectedThread mConnectedThread;
@@ -27,7 +27,6 @@ public class TimePresenter implements ITimePresenter{
     private boolean firstTime = true;
     private boolean timeRunning;
     private long timeLeft;
-    private int minutes, seconds;
 
     final int handlerState = 0;
     private StringBuilder recDataString = new StringBuilder();
@@ -58,24 +57,6 @@ public class TimePresenter implements ITimePresenter{
         timeView.setSecondBtnListener(secondBtnListener);
     }
 
-    public void popTimePicker(View view) {
-        TimePickerDialog.OnTimeSetListener onTimeSetListener = new TimePickerDialog.OnTimeSetListener() {
-            @Override
-            public void onTimeSet(TimePicker timePicker, int selectedMinutes, int selectedSeconds) {
-                minutes = selectedMinutes;
-                seconds = selectedSeconds;
-                timeView.setTimeBtn(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
-            }
-        };
-
-        int style = AlertDialog.THEME_HOLO_DARK;
-
-        TimePickerDialog timePickerDialog = new TimePickerDialog(timeView, style, onTimeSetListener, minutes, seconds, true);
-
-        timePickerDialog.setTitle("Seleccione el tiempo de cocción");
-        timePickerDialog.show();
-    }
-
     @SuppressLint("MissingPermission")
     public void startBTConnection(String deviceAddress)
     {
@@ -85,23 +66,6 @@ public class TimePresenter implements ITimePresenter{
         catch (IOException e)
         {
             timeView.showToast( "La creación del Socket fallo");
-        }
-
-        try
-        {
-            blueTooth.getBluetoothSocket().connect();
-        }
-
-        catch (IOException e)
-        {
-            try
-            {
-                blueTooth.getBluetoothSocket().close();
-            }
-            catch (IOException e2)
-            {
-                e2.printStackTrace();
-            }
         }
 
         try {
@@ -119,31 +83,14 @@ public class TimePresenter implements ITimePresenter{
 
     private void pauseTimer() throws Exception {
         mConnectedThread.write(PAUSE_ACTION);
-        timer.cancel();
+        timeView.cancelTimer();
         timeRunning = false;
         timeView.setFirstBtn("Continuar");
     }
 
     private void StartTimer()
     {
-        timer = new CountDownTimer(timeLeft, 1000)
-        {
-            @Override
-            public void onTick(long millisUntilFinished)
-            {
-                timeLeft = millisUntilFinished;
-                updateCountDownText();
-            }
-
-            @Override
-            public void onFinish()
-            {
-                timeRunning = false;
-                timeView.setTimerViewVisibility(View.INVISIBLE);
-                timeView.setTimeBtnVisibility(View.VISIBLE);
-                timeView.setTimeBtn("Listo!");
-            }
-        }.start();
+        timeView.StartTimer();
 
         timeRunning = true;
         timeView.setFirstBtn("Pausar");
@@ -151,15 +98,6 @@ public class TimePresenter implements ITimePresenter{
 
         timeView.setTimerViewVisibility(View.VISIBLE);
         timeView.setTimeBtnVisibility(View.INVISIBLE);
-    }
-
-    private void updateCountDownText()
-    {
-        int minutes = (int) (timeLeft / 1000) / 60;
-        int seconds = (int) (timeLeft / 1000) % 60;
-
-        String timeLeftFormatted = String.format("%02d:%02d", minutes, seconds);
-        timeView.setTimerView(timeLeftFormatted);
     }
 
     private Handler HandlerMsgHiloPrincipal()
@@ -209,7 +147,7 @@ public class TimePresenter implements ITimePresenter{
             }
             else
             {
-                if(minutes == 0 && seconds == 0)
+                if(timeView.getMinutes() == 0 && timeView.getSeconds() == 0)
                 {
                     timeView.showToast("Por favor, ingrese un tiempo");
                     return;
@@ -218,9 +156,9 @@ public class TimePresenter implements ITimePresenter{
                 try {
                     if(firstTime)
                     {
-                        mConnectedThread.write(Integer.toString(seconds));
+                        mConnectedThread.write(Integer.toString(timeView.getSeconds()));
 
-                        timeLeft = TimeUnit.SECONDS.toMillis(seconds);
+                        timeLeft = TimeUnit.SECONDS.toMillis(timeView.getSeconds());
 
                         firstTime = false;
                     }
@@ -259,4 +197,34 @@ public class TimePresenter implements ITimePresenter{
             timeView.finish();
         }
     };
+
+    public void setTimeLeft(long time)
+    {
+        timeLeft = time;
+    }
+
+    public long getTimeLeft()
+    {
+        return timeLeft;
+    }
+
+    public void setTimeRunning(boolean flag)
+    {
+        timeRunning = flag;
+    }
+
+    public void CheckBTConnection()
+    {
+        try {
+            blueTooth.closeSocket();
+        }
+        catch (IOException e2) {
+            e2.printStackTrace();
+        }
+    }
+
+    @Override
+    public void setFirstTime(boolean flag) {
+        firstTime = flag;
+    }
 }

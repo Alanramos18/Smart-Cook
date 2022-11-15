@@ -33,7 +33,7 @@ public class BlueTooth {
     @SuppressLint("MissingPermission")
     public void StartConnection(String deviceAddress) throws IOException {
 
-        if(!btSocket.isConnected()) {
+        if(deviceAddress != null && !deviceAddress.isEmpty()) {
             device = mBluetoothAdapter.getRemoteDevice(deviceAddress);
 
             try {
@@ -70,6 +70,9 @@ public class BlueTooth {
         return device;
     }
 
+    public void closeSocket() throws IOException {
+        btSocket.close();
+    }
     @SuppressLint("MissingPermission")
     private BluetoothSocket createBluetoothSocket(BluetoothDevice device) throws IOException {
 
