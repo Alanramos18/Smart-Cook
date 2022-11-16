@@ -54,7 +54,6 @@ Servo microservomotor;
 #define PIN_POTENCIOMETRO A3
 
 //:::::::::::::::VARIABLES:::::::::::::::::::::::::::
-// VARIABLE GLOBAL DE ESTADO DEL SISTEMA EMBEBIDO
 int estado;
 int pausa = 0;
 int tiempo = 0;
@@ -85,12 +84,12 @@ stEvento evento;
 String estados[] = {"ESTADO_INICIO", "ESTADO_ENCENDIDO", "ESTADO_CALENTANDO", "ESTADO_PAUSADO", "ESTADO_ERROR"};
 String eventos[] = {"TIPO_EVENTO_CONTINUE", "TIPO_EVENTO_START", "TIPO_EVENTO_TIMEOUT", "TIPO_EVENTO_ABRIR_PUERTA", "TIPO_EVENTO_CERRAR_PUERTA", "TIPO_EVENTO_PRESIONA_PAUSA", "TIPO_EVENTO_CANCELAR", "TIPO_EVENTO_DESCONOCIDO","TIPO_EVENTO_PRESIONA_REAUNDAR"};
 
-SoftwareSerial BT(5,6); // RX, TX recordar que se cruzan
+SoftwareSerial BT(5,6);
 
 //-----------------------------------------------
 int verificarConsola()
 {
-    if(Serial.available() > 0 && tiempo == 0){ 	 //se verifica si hay un dato en el puerto serial
+    if(Serial.available() > 0 && tiempo == 0){ 
       iniciarTiempo(Serial.parseInt());
 
       return tiempo;
@@ -100,7 +99,6 @@ int verificarConsola()
     {
       int action = BT.parseInt();
 
-      // Se llama siempre con 0 luego de un llamado correcto. Ver esto con los profes
       if(action == 0)
       {
         return 0;
@@ -121,11 +119,9 @@ int verificarConsola()
 
 void iniciarTiempo(int t)
 {
-    // Multiplico por 1000 asi lo transformo en milisegundos.
     tiempo = t * 1000;
     timerCalentandoInicio = millis();
     
-    // Si la puerta estaba abierta, la cierro automaticamente.
     if(estado_puerta == PUERTA_ABIERTA)
     {
         cambiarEstadoPuerta();
@@ -134,7 +130,6 @@ void iniciarTiempo(int t)
     tipo_evento_temp = TIPO_EVENTO_START;
 }
 
-// Verifica si el boton se presiono.
 bool verificarBoton()
 {
     int valor_actual = digitalRead(PIN_BOTON);
@@ -149,7 +144,6 @@ bool verificarBoton()
     return res;
 }
 
-// Si la puerta esta abierta la cierra y viceversa.
 void cambiarEstadoPuerta()
 {
     if(estado_puerta == PUERTA_ABIERTA)
@@ -168,7 +162,6 @@ void cambiarEstadoPuerta()
 
 bool verificarTimerCalentando()
 {
-    // Tomo el tiempo de ahora y lo resto al milisegundo en el que se ingreso el tiempo de cocina.
     timerCalentandoAhora = millis();
     unsigned long tiempo_temp = timerCalentandoAhora - timerCalentandoInicio; 
 
@@ -185,7 +178,6 @@ bool verificarTimerCalentando()
 
 void recalculoTiempo()
 {
-  // Seteo el tiempo como el tiempo que faltaba y reseteo el tiempo restante
   tiempo = tiempo_restante;
   tiempo_restante = 0;
   timerCalentandoInicio = millis();
@@ -193,15 +185,12 @@ void recalculoTiempo()
 
 void generarEvento()
 {
-    // Verifica si se presiono el boton para abrir/cerrar la puerta
     if(verificarBoton())
     {
         cambiarEstadoPuerta();
     }
 
-    // Setea la temperatura
     temperaturaTemp = analogRead(PIN_POTENCIOMETRO);
-    // Consultar porque creo anda mal el potenciometro.
     if(temperatura == 0 || temperatura - 150 > temperaturaTemp || temperatura + 150 < temperaturaTemp)
     {
       temperatura = temperaturaTemp;
@@ -210,7 +199,6 @@ void generarEvento()
       BT.println(temperatura);
     }
 
-    // Comparo si hubo un cambio de evento
     if(tipo_evento_temp != tipo_evento)
     {
         tipo_evento = tipo_evento_temp;
@@ -252,7 +240,6 @@ void maquinaDeEstados()
         {
             verificarConsola();
 
-            // Apago el led si no esta calentando.
             digitalWrite(PIN_LED, LOW);
             switch (tipo_evento)
             {
@@ -308,7 +295,6 @@ void maquinaDeEstados()
                       }
                     }
 
-                    // Simulo que calienta prendiendo el led.
                     digitalWrite(PIN_LED, HIGH);
 
                     if(estado_puerta == PUERTA_ABIERTA)
@@ -321,12 +307,10 @@ void maquinaDeEstados()
                 break;
                 case TIPO_EVENTO_CANCELAR: case TIPO_EVENTO_TIMEOUT:
                 {
-                    // Suena el buzzer indicando que termino (Preguntar bien esto para que suene bien)
                     tone(PIN_BUZZER, NOTE_C4, 2000);
                     tone(PIN_BUZZER, 0, 2000);
                     tone(PIN_BUZZER, NOTE_C4, 2000);
 
-                    // Abre la puerta cuando termina de calentar
                     microservomotor.write(PUERTA_ABIERTA);
                     estado_puerta = PUERTA_ABIERTA;
 
@@ -413,7 +397,6 @@ void maquinaDeEstados()
 
         case ESTADO_ERROR:
         {
-            // Tono de error
             tone(PIN_BUZZER, NOTE_C4, 2000);
             
             switch (tipo_evento)
@@ -441,12 +424,10 @@ void setup()
     pinMode(PIN_BOTON, INPUT);
   	pinMode(PIN_BUZZER, OUTPUT);
 
-    // Cierra la puera por defecto
   	microservomotor.attach(PIN_MICROSERVOMOTOR, ANCHO_PULSO_MIN_MICROSERVOMOTOR, ANCHO_PULSO_MAX_MICROSERVOMOTOR);  
     microservomotor.write(PUERTA_CERRADA);
   	estado_puerta = PUERTA_CERRADA;
 
-    // Inicializo en estado inicial y evento continue
     estado = ESTADO_INICIAL;
     tipo_evento = TIPO_EVENTO_CONTINUE;
     tipo_evento_temp = TIPO_EVENTO_CONTINUE;
