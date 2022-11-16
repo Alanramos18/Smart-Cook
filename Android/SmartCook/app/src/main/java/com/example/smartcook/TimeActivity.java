@@ -28,31 +28,16 @@ import java.util.concurrent.TimeUnit;
 
 public class TimeActivity extends AppCompatActivity {
 
+    private ITimePresenter presenter;
+
     private TextView temperatureText;
     private TextView pauseText;
     private TextView timerView;
     private Button firstBtn;
     private Button secondBtn;
     private Button timeBtn;
-    private ConnectedThread mConnectedThread;
-    private BluetoothAdapter mBluetoothAdapter;
-    private BluetoothSocket btSocket;
-    private BluetoothDevice device;
-    private boolean firstTime = true;
-    final int handlerState = 0;
-    private StringBuilder recDataString = new StringBuilder();
-
-
     private CountDownTimer timer;
-    private boolean timeRunning;
-    private long timeLeft;
-
     private int minutes, seconds;
-
-    private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    private final static String BLUETOOTH_CHECK = "0";
-    private final static String PAUSE_ACTION = "-2";
-    private final static String CANCEL_ACTION = "-3";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,85 +51,39 @@ public class TimeActivity extends AppCompatActivity {
         secondBtn = findViewById(R.id.secondBtn);
         timeBtn = findViewById(R.id.timeBtn);
 
-        temperatureText.setText("0");
-        firstBtn.setText("Iniciar");
-        secondBtn.setText("Volver");
-        timeBtn.setText("Elegir tiempo");
-
-        timerView.setVisibility(View.INVISIBLE);
-        pauseText.setVisibility(View.INVISIBLE);
-
-        firstBtn.setOnClickListener(firstBtnListener);
-        secondBtn.setOnClickListener(secondBtnListener);
-
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        presenter = new TimePresenter(this);
     }
 
-    private View.OnClickListener secondBtnListener = new View.OnClickListener() {
-        @SuppressLint("NonConstantResourceId")
-        @Override
-        public void onClick(View view) {
-            if(timeRunning)
-            {
-                try {
-                    mConnectedThread.write(CANCEL_ACTION);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-            Intent intent = new Intent(TimeActivity.this, MainActivity.class);
-            intent.putExtra("Direccion_Bluetooth", device.getAddress());
-
-            startActivity(intent);
-
-            finish();
+    public void showToast(String message) {
+        if(message != null && !message.isEmpty())
+        {
+            Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
         }
-    };
+    }
 
-    private View.OnClickListener firstBtnListener = new View.OnClickListener() {
-        @SuppressLint("NonConstantResourceId")
-        @Override
-        public void onClick(View view) {
-            if(timeRunning)
-            {
-                try {
-                    pauseTimer();
-                    pauseText.setVisibility(View.VISIBLE);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            else
-            {
-                if(minutes == 0 && seconds == 0)
-                {
-                    showToast("Por favor, ingrese un tiempo");
-                    return;
-                }
+    @Override
+    public void onResume()
+    {
+        super.onResume();
 
-                try {
-                    if(firstTime)
-                    {
-                        mConnectedThread.write(Integer.toString(seconds));
+        Intent intent=getIntent();
+        Bundle extras=intent.getExtras();
 
-                        timeLeft = TimeUnit.SECONDS.toMillis(seconds);
+        String deviceAddress = extras.getString("Direccion_Bluetooth");
 
-                        firstTime = false;
-                    }
-                    else
-                    {
-                        mConnectedThread.write(PAUSE_ACTION);
-                        pauseText.setVisibility(View.INVISIBLE);
-                    }
-
-                    StartTimer();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
+        if(deviceAddress != null && !deviceAddress.isEmpty())
+        {
+            presenter.startBTConnection(deviceAddress);
         }
-    };
+    }
+
+    @SuppressLint("MissingPermission")
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        presenter.CheckBTConnection();
+    }
 
     public void popTimePicker(View view) {
         TimePickerDialog.OnTimeSetListener onTimeSetListener = new TimePickerDialog.OnTimeSetListener() {
@@ -164,43 +103,87 @@ public class TimeActivity extends AppCompatActivity {
         timePickerDialog.show();
     }
 
-    private void pauseTimer() throws Exception {
-        mConnectedThread.write(PAUSE_ACTION);
-        timer.cancel();
-        timeRunning = false;
-        firstBtn.setText("Continuar");
+    // Setters
+    public void setTemperatureText(String text)
+    {
+        temperatureText.setText(text);
     }
 
-    private void StartTimer()
+    public void setFirstBtn(String text)
     {
-        timer = new CountDownTimer(timeLeft, 1000)
+        firstBtn.setText(text);
+
+    }
+
+    public void setSecondBtn(String text)
+    {
+        secondBtn.setText(text);
+
+    }
+
+    public void setTimeBtn(String text)
+    {
+        timeBtn.setText(text);
+    }
+
+    public void setTimerViewVisibility(int visibility)
+    {
+        timerView.setVisibility(visibility);
+    }
+
+    public void setTimeBtnVisibility(int visibility)
+    {
+        timeBtn.setVisibility(visibility);
+    }
+
+    public void setPauseTextVisibility(int visibility)
+    {
+        pauseText.setVisibility(visibility);
+    }
+
+    public void setFirstBtnListener(View.OnClickListener listener)
+    {
+        firstBtn.setOnClickListener(listener);
+    }
+
+    public void setSecondBtnListener(View.OnClickListener listener)
+    {
+        secondBtn.setOnClickListener(listener);
+    }
+
+    public void cancelTimer()
+    {
+        timer.cancel();
+    }
+
+    public void StartTimer() {
+        timer = new CountDownTimer(presenter.getTimeLeft(), 1000)
         {
             @Override
             public void onTick(long millisUntilFinished)
             {
-                timeLeft = millisUntilFinished;
+                presenter.setTimeLeft(millisUntilFinished);
                 updateCountDownText();
             }
 
             @Override
             public void onFinish()
             {
-                timeRunning = false;
+                presenter.setTimeRunning(false);
+                presenter.setFirstTime(true);
                 timerView.setVisibility(View.INVISIBLE);
                 timeBtn.setVisibility(View.VISIBLE);
-                timeBtn.setText("Listo!");
+                timeBtn.setText("Elegir tiempo");
+                firstBtn.setText("Iniciar");
+                secondBtn.setText("Volver");
+                showToast("Finalizado!");
             }
         }.start();
-
-        timeRunning = true;
-        firstBtn.setText("Pausar");
-        secondBtn.setText("Cancelar");
-        timeBtn.setVisibility(View.INVISIBLE);
-        timerView.setVisibility(View.VISIBLE);
     }
 
     private void updateCountDownText()
     {
+        long timeLeft = presenter.getTimeLeft();
         int minutes = (int) (timeLeft / 1000) / 60;
         int seconds = (int) (timeLeft / 1000) % 60;
 
@@ -208,101 +191,13 @@ public class TimeActivity extends AppCompatActivity {
         timerView.setText(timeLeftFormatted);
     }
 
-    private void showToast(String message) {
-        if(message != null && !message.isEmpty())
-        {
-            Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private BluetoothSocket createBluetoothSocket(BluetoothDevice device) throws IOException {
-
-        return  device.createRfcommSocketToServiceRecord(BTMODULEUUID);
-    }
-
-    @SuppressLint("MissingPermission")
-    @Override
-    public void onResume()
+    public int getMinutes()
     {
-        super.onResume();
-
-        Intent intent=getIntent();
-        Bundle extras=intent.getExtras();
-
-        String deviceAddress = extras.getString("Direccion_Bluetooth");
-
-        if(deviceAddress != null && !deviceAddress.isEmpty())
-        {
-            device = mBluetoothAdapter.getRemoteDevice(deviceAddress);
-
-            try {
-                btSocket = createBluetoothSocket(device);
-            }
-            catch (IOException e)
-            {
-                showToast( "La creación del Socket fallo");
-            }
-
-            try
-            {
-                btSocket.connect();
-            }
-
-            catch (IOException e)
-            {
-                try
-                {
-                    btSocket.close();
-                }
-                catch (IOException e2)
-                {
-                    e2.printStackTrace();
-                }
-
-            }
-
-            try {
-                mConnectedThread = new ConnectedThread(btSocket);
-                mConnectedThread.start();
-                mConnectedThread.write(BLUETOOTH_CHECK);
-                mConnectedThread.setBluetoothIn(HandlerMsgHiloPrincipal(), handlerState);
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-        }
+        return minutes;
     }
 
-    private Handler HandlerMsgHiloPrincipal()
+    public int getSeconds()
     {
-        return new Handler(Looper.getMainLooper()) {
-            public void handleMessage(Message msg)
-            {
-                if(msg.what == handlerState)
-                {
-                    String readMessage = (String) msg.obj;
-                    recDataString.append(readMessage);
-                    int endOfLineIndex = recDataString.indexOf("\r\n");
-
-                    if(endOfLineIndex > 0)
-                    {
-                        String temperature = recDataString.substring(0, endOfLineIndex);
-                        setTemperature(temperature);
-
-                        recDataString.delete(0, recDataString.length());
-                    }
-                }
-            }
-        };
-    }
-
-    private void setTemperature(String temp)
-    {
-        int temperature = Integer.parseInt(temp) / 10;
-
-        temperatureText.setText(Integer.toString(temperature) + "\u2103");
+        return seconds;
     }
 }
